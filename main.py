@@ -109,6 +109,16 @@ def get_weather(lat, lon, dt):
         weather = {"error": "Немає даних про погоду на цей час"}
     return weather
 
+def is_edited_by_software(exif_data):
+    editors = [
+        'lightroom', 'photoshop', 'snapseed', 'vsco', 'gimp', 'pixlr', 'adobe', 'corel', 'paint', 'xmp'
+    ]
+    for key in exif_data:
+        value = str(exif_data[key]).lower()
+        if any(editor in value for editor in editors):
+            return True, value
+    return False, None
+
 def analyze_photo(image_path, photo_time, lat, lon):
     try:
         weather_data = get_weather(lat, lon, photo_time)
@@ -117,12 +127,15 @@ def analyze_photo(image_path, photo_time, lat, lon):
     is_day_visual = is_day_by_image(image_path)
     if is_day_visual is None:
         return {"error": "Не вдалося проаналізувати зображення."}
-    # Получаем timezone из погодных данных, если есть
+    exif = get_exif_data(image_path)
+    edited, editor_name = is_edited_by_software(exif)
     result = {
         "photo_time": photo_time.strftime('%Y-%m-%d %H:%M:%S'),
         "location": {"lat": lat, "lon": lon},
         "weather_at_time": weather_data,
         "visual_day": is_day_visual,
-        "exif_day": is_day_by_exif_time(lat, lon, photo_time)
+        "exif_day": is_day_by_exif_time(lat, lon, photo_time),
+        "edited": edited,
+        "editor_name": editor_name,
     }
     return result

@@ -132,6 +132,8 @@ class PhotoAnalyzerApp(tk.Tk):
             out += f"День/ніч (EXIF): {result.get('exif_day', '-')}\n"
             out += f"Температура: {weather.get('temperature', '-')}°C\n"
             out += f"Хмарність: {weather.get('clouds', '-')}%\n"
+            if result.get('edited'):
+                out += f"⚠️ Фото було оброблене у редакторі: {result.get('editor_name')}\n"
             self.result_text.insert(tk.END, out)
         except Exception as e:
             messagebox.showerror("Помилка", str(e))
