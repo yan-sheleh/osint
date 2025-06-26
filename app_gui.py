@@ -42,14 +42,14 @@ class PhotoAnalyzerApp(tk.Tk):
         if not self.file_path:
             messagebox.showwarning("Увага", "Спочатку оберіть файл!")
             return
-        # Перевіряємо наявність EXIF
+        
         exif = get_exif_data(self.file_path)
         if not exif:
             self.result_text.delete(1.0, tk.END)
             self.result_text.insert(
                 tk.END, "Фото створене ШІ (EXIF-метадані відсутні)")
             return
-        # Отримуємо дату через exifread
+
         photo_time = get_photo_datetime_exifread(self.file_path)
         if not photo_time:
             prompt = "В EXIF немає часу зйомки. Введіть дату і час у форматі РРРР:ММ:ДД ГГ:ХХ:СС (наприклад: 2024:06:26 15:45:00)"
@@ -64,7 +64,7 @@ class PhotoAnalyzerApp(tk.Tk):
             except Exception:
                 messagebox.showerror("Помилка", "Некоректний формат часу!")
                 return
-        # Координати
+        
         if "GPSInfo" in exif:
             try:
                 lat, lon = convert_gps(exif["GPSInfo"])
@@ -103,7 +103,7 @@ class PhotoAnalyzerApp(tk.Tk):
                 messagebox.showerror(
                     "Помилка", "Не вдалося визначити координати!")
                 return
-        # Аналіз
+
         try:
             result = analyze_photo(self.file_path, photo_time, lat, lon)
             self.result_text.delete(1.0, tk.END)
@@ -129,6 +129,7 @@ class PhotoAnalyzerApp(tk.Tk):
             out += f"Часовий пояс: {tz} ({tz_abr})\n"
             out += f"Місце: широта {location.get('lat', '-')}, довгота {location.get('lon', '-')}\n"
             out += f"День/ніч (візуально): {'День' if result.get('visual_day') else 'Ніч'}\n"
+            out += f"День/ніч (EXIF): {result.get('exif_day', '-')}\n"
             out += f"Температура: {weather.get('temperature', '-')}°C\n"
             out += f"Хмарність: {weather.get('clouds', '-')}%\n"
             self.result_text.insert(tk.END, out)

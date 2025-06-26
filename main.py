@@ -2,9 +2,11 @@ import requests
 from datetime import datetime
 from PIL import Image, ImageStat
 from PIL.ExifTags import TAGS, GPSTAGS
+from astral.sun import sun
+from astral import LocationInfo
 import exifread
+from pytz import UTC
 
-# Функция для извлечения EXIF-метаданных с помощью Pillow
 def get_exif_data(image_path):
     image = Image.open(image_path)
     info = image.getexif()
@@ -23,7 +25,23 @@ def get_exif_data(image_path):
             exif_data[decoded] = value
     return exif_data
 
-# Преобразование координат из EXIF в десятичный формат
+def is_day_by_exif_time(lat, lon, dt):
+    city = LocationInfo(latitude=lat, longitude=lon)
+    s = sun(city.observer, date=dt.date(), tzinfo=UTC)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    periods = [
+        (('dawn', 'noon'), 'Ранок'),
+        (('noon', 'sunset'), 'День'),
+        (('sunset', 'dusk'), 'Вечір'),
+    ]
+    if dt < s['dawn'] or dt >= s['dusk']:
+        return 'Ніч'
+    for (start, end), name in periods:
+        if s[start] <= dt < s[end]:
+            return name
+    return 'Ніч'
+
 def convert_gps(exif_gps):
     def _convert(coord, ref):
         degrees = coord[0][0] / coord[0][1]
@@ -37,7 +55,6 @@ def convert_gps(exif_gps):
     lon = _convert(exif_gps['GPSLongitude'], exif_gps['GPSLongitudeRef'])
     return lat, lon
 
-# Анализ яркости изображения (день/ночь)
 def is_day_by_image(image_path, threshold=90):
     try:
         image = Image.open(image_path).convert('L')
@@ -47,7 +64,6 @@ def is_day_by_image(image_path, threshold=90):
     except Exception:
         return None
 
-# Получение даты съёмки через exifread (ищет по разным тегам)
 def get_photo_datetime_exifread(image_path):
     with open(image_path, 'rb') as f:
         tags = exifread.process_file(f)
@@ -65,7 +81,6 @@ def get_photo_datetime_exifread(image_path):
                     continue
     return None
 
-# Получение погодных данных с Open-Meteo
 def get_weather(lat, lon, dt):
     date_str = dt.strftime('%Y-%m-%d')
     hour = dt.hour
@@ -94,7 +109,6 @@ def get_weather(lat, lon, dt):
         weather = {"error": "Немає даних про погоду на цей час"}
     return weather
 
-# Основная функция анализа
 def analyze_photo(image_path, photo_time, lat, lon):
     try:
         weather_data = get_weather(lat, lon, photo_time)
@@ -109,5 +123,6 @@ def analyze_photo(image_path, photo_time, lat, lon):
         "location": {"lat": lat, "lon": lon},
         "weather_at_time": weather_data,
         "visual_day": is_day_visual,
+        "exif_day": is_day_by_exif_time(lat, lon, photo_time)
     }
     return result
